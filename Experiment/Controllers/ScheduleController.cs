@@ -8,21 +8,40 @@ using System.Net;
 using System.Web;
 using System.Web.Mvc;
 using Experiment.Models;
+using Microsoft.AspNet.Identity;
+using System.Globalization;
+using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace Experiment.Controllers
 {
     public class ScheduleController : Controller
     {
-        private GilgalbyteDbContext db = new GilgalbyteDbContext();
 
+        private GilgalbyteDbContext db;
+        private UserManager<MyUser> manager;
+        private System.Timers.Timer myTimer;
+        private Schedule schedule;
+        private MyUser currentUser;
+        private CultureInfo ci;
+        public ScheduleController()
+        {
+            db = new GilgalbyteDbContext();
+            manager = new UserManager<MyUser>(new UserStore<MyUser>(db));
+            schedule = new Schedule();
+            currentUser = new MyUser();
+            myTimer = new System.Timers.Timer();
+            ci = new CultureInfo("en-US");
+        }
         // GET: Schedule
         public async Task<ActionResult> Index()
         {
-            return View(await db.Schedules.ToListAsync());
+            var currentUser = manager.FindById(User.Identity.GetUserId());
+            var patient = await db.Patients.Include(u => u.User).Where(p => p.User.Id == currentUser.Id).FirstOrDefaultAsync();
+            return View(await db.Schedules.Include(p => p.Patient).Where(s => s.Patient.Id == patient.Id).ToListAsync());
         }
 
         // GET: Schedule/Details/5
-        public async Task<ActionResult> Details(int? id)
+        public async Task<ActionResult> Details(int? id) 
         {
             if (id == null)
             {
